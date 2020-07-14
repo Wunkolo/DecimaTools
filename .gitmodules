@@ -1,0 +1,3 @@
+[submodule "extern/mio"]
+	path = extern/mio
+	url = git@github.com:mandreyel/mio.git
