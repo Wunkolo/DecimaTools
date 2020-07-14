@@ -1,12 +1,20 @@
 #include <cstdint>
 #include <cstddef>
+#include <array>
 
 namespace Decima
 {
+	constexpr std::array<std::uint32_t, 4> MurmurKey = {
+		0x0FA3A9443,
+		0x0F41CAB62,
+		0x0F376811C,
+		0x0D2A89E3E
+	};
 	#pragma pack(push,1)
-
 	struct FileHeader
 	{
+		// 0x20304050 : Horizon Zero Dawn
+		// 0x21304050 : Death Stranding
 		std::uint32_t Magic;
 		std::uint32_t Version;
 		std::uint64_t FileSize;
