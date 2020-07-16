@@ -4,7 +4,7 @@
 
 namespace Decima
 {
-	constexpr std::array<std::uint32_t, 4> MurmurKey = {
+	constexpr std::array<std::uint32_t, 4> MurmurSeeds = {
 		0x0FA3A9443,
 		0x0F41CAB62,
 		0x0F376811C,

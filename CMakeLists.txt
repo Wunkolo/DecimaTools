@@ -26,6 +26,7 @@ if( MSVC )
 elseif( CMAKE_COMPILER_IS_GNUCXX )
 	target_compile_options( Decima PUBLIC -Wall )
 	target_compile_options( Decima PUBLIC -Wextra )
+	target_compile_options( Decima PUBLIC -march=skylake )
 endif()
 
 
