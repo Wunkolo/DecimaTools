@@ -22,7 +22,7 @@ namespace Decima
 		// 0x21304050 : Death Stranding(PC)
 		std::uint32_t Magic;
 		std::uint32_t Version;
-		std::uint64_t FilebSize;
+		std::uint64_t FileSize;
 		std::uint64_t DataSize;
 		std::uint64_t FileTableCount;
 		std::uint32_t ChunkTableCount;

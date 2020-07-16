@@ -2,6 +2,9 @@
 #include <cstddef>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
+
+#include <vector>
 
 #include <Decima/Decima.hpp>
 #include <mio/mmap.hpp>
@@ -71,6 +74,33 @@ int main(int argc, char* argv[])
 		Header.ChunkTableCount,
 		Header.MaxChunkSize
 	);
+
+	std::vector<Decima::FileEntry> FileEntries;
+	FileEntries.resize(Header.FileTableCount);
+	std::memcpy(
+		FileEntries.data(),
+		FileMapping.data() + sizeof(Decima::FileHeader),
+		sizeof(Decima::FileEntry) * Header.FileTableCount
+	);
+
+	for(Decima::FileEntry& CurEntry : FileEntries)
+	{
+		std::printf(
+			"EntryID     %12u\n"
+			"Unknown04   %12u\n"
+			"Unknown08   %12lu\n"
+			"Offset      %12lu\n"
+			"Size        %12u\n"
+			"Unknown1C   %12u\n",
+			CurEntry.EntryID,
+			CurEntry.Unknown04,
+			CurEntry.Unknown08,
+			CurEntry.Offset,
+			CurEntry.Size,
+			CurEntry.Unknown1C
+		);
+	}
+	
 	return 0;
 }
 
@@ -106,7 +136,7 @@ void MurmurHash3_x64_128 ( const void * key, const int len,
 	uint64_t h1 = seed;
 	uint64_t h2 = seed;
 
-	uint64_t c1 = 0x87c37b9111Decima::MurmurSeed53d5LLU;
+	uint64_t c1 = 0x87c37b91114253d5LLU;
 	uint64_t c2 = 0x4cf5ad432745937fLLU;
 
 	//----------
