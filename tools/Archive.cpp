@@ -28,7 +28,7 @@ int main(int argc, char* argv[])
 	const __m128i MurmurSalt = _mm_loadu_si128((const __m128i*)Decima::MurmurSeeds.data());
 	__m128i CurHashInput;
 	__m128i CurHash;
-	__m128i CurVec = _mm_blend_epi16 (
+	__m128i CurVec = _mm_blend_epi16(
 		MurmurSalt,
 		_mm_set1_epi32(((std::uint32_t*)&Header)[1]),
 		3
@@ -41,6 +41,19 @@ int main(int argc, char* argv[])
 	);
 	_mm_storeu_si128((__m128i*)&(((std::uint32_t*)&Header)[2]), CurVec);
 
+
+	CurVec = _mm_blend_epi16(
+		MurmurSalt,
+		_mm_set1_epi32(Header.Version + 1),
+		3
+	);
+	CurHashInput = CurVec;
+	MurmurHash3_x64_128(&CurHashInput, 0x10, 42, &CurHash);
+	CurVec = _mm_xor_si128(
+		_mm_loadu_si128((__m128i*)&(((std::uint32_t*)&Header)[2 + 4])),
+		CurHash
+	);
+	_mm_storeu_si128((__m128i*)&(((std::uint32_t*)&Header)[2 + 4]), CurVec);
 
 	std::printf(
 		"Magic:				%08X\n"
