@@ -25,7 +25,7 @@ int main(int argc, char* argv[])
 
 	Header = *reinterpret_cast<const Decima::FileHeader*>(FileMapping.data());
 
-	const __m128i MurmurSalt = _mm_loadu_si128((const __m128i*)Decima::MurmurSeeds.data());
+	const __m128i MurmurSalt = _mm_loadu_si128((const __m128i*)Decima::MurmurSalt.data());
 	__m128i CurHashInput;
 	__m128i CurHash;
 	__m128i CurVec = _mm_blend_epi16(
@@ -34,7 +34,7 @@ int main(int argc, char* argv[])
 		3
 	);
 	CurHashInput = CurVec;
-	MurmurHash3_x64_128(&CurHashInput, 0x10, 42, &CurHash);
+	MurmurHash3_x64_128(&CurHashInput, 0x10, Decima::MurmurSeed, &CurHash);
 	CurVec = _mm_xor_si128(
 		_mm_loadu_si128((__m128i*)&(((std::uint32_t*)&Header)[2])),
 		CurHash
@@ -48,7 +48,7 @@ int main(int argc, char* argv[])
 		3
 	);
 	CurHashInput = CurVec;
-	MurmurHash3_x64_128(&CurHashInput, 0x10, 42, &CurHash);
+	MurmurHash3_x64_128(&CurHashInput, 0x10, Decima::MurmurSeed, &CurHash);
 	CurVec = _mm_xor_si128(
 		_mm_loadu_si128((__m128i*)&(((std::uint32_t*)&Header)[2 + 4])),
 		CurHash
@@ -56,13 +56,13 @@ int main(int argc, char* argv[])
 	_mm_storeu_si128((__m128i*)&(((std::uint32_t*)&Header)[2 + 4]), CurVec);
 
 	std::printf(
-		"Magic:				%08X\n"
-		"Version:			%08X\n"
-		"FileSize:			%12lu\n"
-		"DataSize:			%12lu\n"
-		"FileTableCount:	%12lu\n"
-		"ChunkTableCount:	%12u\n"
-		"MaxChunkSize:		%12u\n",
+		"Magic:               %12.08X\n"
+		"Version:             %12.08X\n"
+		"FileSize:            %12lu\n"
+		"DataSize:            %12lu\n"
+		"FileTableCount:      %12lu\n"
+		"ChunkTableCount:     %12u\n"
+		"MaxChunkSize:        %12u\n",
 		Header.Magic,
 		Header.Version,
 		Header.FileSize,
@@ -106,7 +106,7 @@ void MurmurHash3_x64_128 ( const void * key, const int len,
 	uint64_t h1 = seed;
 	uint64_t h2 = seed;
 
-	uint64_t c1 = 0x87c37b91114253d5LLU;
+	uint64_t c1 = 0x87c37b9111Decima::MurmurSeed53d5LLU;
 	uint64_t c2 = 0x4cf5ad432745937fLLU;
 
 	//----------

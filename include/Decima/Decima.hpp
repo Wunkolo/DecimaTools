@@ -4,12 +4,14 @@
 
 namespace Decima
 {
-	constexpr std::array<std::uint32_t, 4> MurmurSeeds = {
+	constexpr std::array<std::uint32_t, 4> MurmurSalt = {
 		0x0FA3A9443,
 		0x0F41CAB62,
 		0x0F376811C,
 		0x0D2A89E3E
 	};
+
+	constexpr std::uint32_t MurmurSeed = 42u;
 	#pragma pack(push,1)
 	struct FileHeader
 	{
