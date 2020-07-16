@@ -13,18 +13,22 @@ namespace Decima
 
 	constexpr std::uint32_t MurmurSeed = 42u;
 	#pragma pack(push,1)
+
+	// Thanks Jayveer for actually being open about these structs
+	// https://github.com/Jayveer/Decima-Explorer/blob/master/archive/DecimaArchive.h
 	struct FileHeader
 	{
-		// 0x20304050 : Horizon Zero Dawn
-		// 0x21304050 : Death Stranding
+		// 0x20304050 : Horizon Zero Dawn(PS4)
+		// 0x21304050 : Death Stranding(PC)
 		std::uint32_t Magic;
 		std::uint32_t Version;
-		std::uint64_t FileSize;
+		std::uint64_t FilebSize;
 		std::uint64_t DataSize;
 		std::uint64_t FileTableCount;
 		std::uint32_t ChunkTableCount;
 		std::uint32_t MaxChunkSize;
 	};
+	static_assert(sizeof(FileHeader) == 0x28);
 
 	struct FileEntry
 	{
@@ -35,6 +39,7 @@ namespace Decima
 		std::uint32_t Size;
 		std::uint32_t Unknown1C;
 	};
+	static_assert(sizeof(FileEntry) == 0x20);
 
 	struct ChunkEntry
 	{
@@ -45,5 +50,6 @@ namespace Decima
 		std::uint32_t SizeCompressed;
 		std::uint32_t Unknown1C;
 	};
+	static_assert(sizeof(ChunkEntry) == 0x20);
 	#pragma pack(pop)
 }
