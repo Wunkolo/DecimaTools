@@ -78,6 +78,8 @@ int main(int argc, char* argv[])
 		Header.MaxChunkSize
 	);
 
+
+	//// File Entries
 	std::vector<Decima::FileEntry> FileEntries;
 	FileEntries.resize(Header.FileTableCount);
 	std::memcpy(
@@ -120,12 +122,13 @@ int main(int argc, char* argv[])
 			_mm_storeu_si128((__m128i*)&(((std::uint32_t*)&CurEntry)[4]), CurVec);
 		}
 		std::printf(
+			"\t---------------------------------------\n"
 			"\tEntryID:       %24.u\n"
-			"\t- Unknown04:   %24.u\n"
-			"\t- Unknown08:   %24.016lX\n"
-			"\t- Offset:      %24lu\n"
-			"\t- Size:        %24u\n"
-			"\t- Unknown1C:   %24.08X\n",
+			"\tUnknown04:     %24.u\n"
+			"\tUnknown08:     %24.016lX\n"
+			"\tOffset:        %24lu\n"
+			"\tSize:          %24u\n"
+			"\tUnknown1C:     %24.08X\n",
 			CurEntry.EntryID,
 			CurEntry.Unknown04,
 			CurEntry.Unknown08,
@@ -135,6 +138,70 @@ int main(int argc, char* argv[])
 		);
 	}
 	
+
+	// Chunk Entries
+
+	std::vector<Decima::ChunkEntry> ChunkEntries;
+	ChunkEntries.resize(Header.ChunkTableCount);
+	std::memcpy(
+		ChunkEntries.data(),
+		FileMapping.data()
+		+ sizeof(Decima::FileHeader)
+		+ sizeof(Decima::FileEntry) * Header.FileTableCount,
+		sizeof(Decima::ChunkEntry) * Header.ChunkTableCount
+	);
+
+	for(Decima::ChunkEntry& CurChunk : ChunkEntries)
+	{
+		{
+			__m128i CurHashInput;
+			__m128i CurHash;
+			__m128i CurVec = _mm_blend_epi16(
+				MurmurSalt,
+				_mm_set1_epi32(CurChunk.Unknown0C),
+				3
+			);
+			CurHashInput = CurVec;
+			MurmurHash3_x64_128(&CurHashInput, 0x10, Decima::MurmurSeed, &CurHash);
+
+			CurVec = _mm_xor_si128(
+				_mm_loadu_si128((__m128i*)&CurChunk),
+				CurHash
+			);
+			_mm_storeu_si128((__m128i*)&CurChunk, CurVec);
+
+
+			CurVec = _mm_blend_epi16(
+				MurmurSalt,
+				_mm_set1_epi32(CurChunk.Unknown1C),
+				3
+			);
+			CurHashInput = CurVec;
+			MurmurHash3_x64_128(&CurHashInput, 0x10, Decima::MurmurSeed, &CurHash);
+			CurVec = _mm_xor_si128(
+				_mm_loadu_si128((__m128i*)&(((std::uint32_t*)&CurChunk)[4])),
+				CurHash
+			);
+			_mm_storeu_si128((__m128i*)&(((std::uint32_t*)&CurChunk)[4]), CurVec);
+		}
+		std::printf(
+			"\t---------------------------------------------\n"
+			"\tOffsetUncompressed:  %24.lu\n"
+			"\tSizeUncompresed:     %24.u\n"
+			"\tUnknown0C:           %24.08X\n"
+			"\tOffsetCompressed:    %24.lu\n"
+			"\tSizeCompressed:      %24.u\n"
+			"\tUnknown1C:           %24.08X\n",
+			CurChunk.OffsetUncompressed,
+			CurChunk.SizeUncompresed,
+			CurChunk.Unknown0C,
+			CurChunk.OffsetCompressed,
+			CurChunk.SizeCompressed,
+			CurChunk.Unknown1C
+		);
+	}
+
+
 	return 0;
 }
 

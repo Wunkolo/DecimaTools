@@ -37,6 +37,7 @@ namespace Decima
 		std::uint64_t Unknown08;
 		std::uint64_t Offset;
 		std::uint32_t Size;
+		// Seems to be used during decryption
 		std::uint32_t Unknown1C;
 	};
 	static_assert(sizeof(FileEntry) == 0x20);
@@ -45,9 +46,11 @@ namespace Decima
 	{
 		std::uint64_t OffsetUncompressed;
 		std::uint32_t SizeUncompresed;
+		// Used during Decryption
 		std::uint32_t Unknown0C;
 		std::uint64_t OffsetCompressed;
 		std::uint32_t SizeCompressed;
+		// Used during Decryption
 		std::uint32_t Unknown1C;
 	};
 	static_assert(sizeof(ChunkEntry) == 0x20);
