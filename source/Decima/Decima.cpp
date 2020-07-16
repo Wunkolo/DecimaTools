@@ -121,52 +121,45 @@ namespace Decima
 		std::transform(
 			CurVec.cbegin(), CurVec.cend(),
 			CurHash.cbegin(),
-			&(((std::uint32_t*)this)[2]),
+			(std::uint32_t*)this + 2,
 			std::bit_xor<std::uint32_t>()
 		);
-		
+
 		CurVec = MurmurSalt;
 		CurVec[0] = this->Version + 1;
 		MurmurHash3_x64_128(CurVec.data(), 0x10, Decima::MurmurSeed, CurHash.data());
 
 		std::transform(
 			CurHash.cbegin(), CurHash.cend(),
-			&(((const std::uint32_t*)this)[2 + 4]),
-			&(((std::uint32_t*)this)[2 + 4]),
+			(const std::uint32_t*)this + 2 + 4,
+			(std::uint32_t*)this + 2 + 4,
 			std::bit_xor<std::uint32_t>()
 		);
 	}
 	void FileEntry::Decrypt()
 	{
-		const __m128i MurmurSaltV = _mm_loadu_si128((const __m128i*)MurmurSalt.data());
-		__m128i CurHashInput;
-		__m128i CurHash;
-		__m128i CurVec = _mm_blend_epi16(
-			MurmurSaltV,
-			_mm_set1_epi32(((std::uint32_t*)this)[1]),
-			3
-		);
-		CurHashInput = CurVec;
-		MurmurHash3_x64_128(&CurHashInput, 0x10, Decima::MurmurSeed, &CurHash);
+		std::array<std::uint32_t,4> CurVec = MurmurSalt;
+		CurVec[0] = this->Unknown04;
+		std::array<std::uint32_t,4> CurHash;
+		MurmurHash3_x64_128(CurVec.data(), 0x10, Decima::MurmurSeed, CurHash.data());
 
-		CurVec = _mm_xor_si128(
-			_mm_loadu_si128((__m128i*)&(((std::uint32_t*)this)[2])),
-			CurHash
+		std::transform(
+			CurHash.cbegin(), CurHash.cend(),
+			(const std::uint32_t*)this + 2,
+			(std::uint32_t*)this,
+			std::bit_xor<std::uint32_t>()
 		);
-		_mm_storeu_si128((__m128i*)this, CurVec);
+		
+		CurVec = MurmurSalt;
+		CurVec[0] = this->Unknown1C;
+		MurmurHash3_x64_128(CurVec.data(), 0x10, Decima::MurmurSeed, CurHash.data());
 
-		CurVec = _mm_blend_epi16(
-			MurmurSaltV,
-			_mm_set1_epi32(this->Unknown1C),
-			3
+		std::transform(
+			CurHash.cbegin(), CurHash.cend(),
+			(const std::uint32_t*)this + 4,
+			(std::uint32_t*)this + 4,
+			std::bit_xor<std::uint32_t>()
 		);
-		CurHashInput = CurVec;
-		MurmurHash3_x64_128(&CurHashInput, 0x10, Decima::MurmurSeed, &CurHash);
-		CurVec = _mm_xor_si128(
-			_mm_loadu_si128((__m128i*)&(((std::uint32_t*)this)[4])),
-			CurHash
-		);
-		_mm_storeu_si128((__m128i*)&(((std::uint32_t*)this)[4]), CurVec);
 	}
 	void ChunkEntry::Decrypt()
 	{
