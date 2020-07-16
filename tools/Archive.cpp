@@ -29,34 +29,37 @@ int main(int argc, char* argv[])
 	Header = *reinterpret_cast<const Decima::FileHeader*>(FileMapping.data());
 
 	const __m128i MurmurSalt = _mm_loadu_si128((const __m128i*)Decima::MurmurSalt.data());
-	__m128i CurHashInput;
-	__m128i CurHash;
-	__m128i CurVec = _mm_blend_epi16(
-		MurmurSalt,
-		_mm_set1_epi32(((std::uint32_t*)&Header)[1]),
-		3
-	);
-	CurHashInput = CurVec;
-	MurmurHash3_x64_128(&CurHashInput, 0x10, Decima::MurmurSeed, &CurHash);
-	CurVec = _mm_xor_si128(
-		_mm_loadu_si128((__m128i*)&(((std::uint32_t*)&Header)[2])),
-		CurHash
-	);
-	_mm_storeu_si128((__m128i*)&(((std::uint32_t*)&Header)[2]), CurVec);
+
+	{
+		__m128i CurHashInput;
+		__m128i CurHash;
+		__m128i CurVec = _mm_blend_epi16(
+			MurmurSalt,
+			_mm_set1_epi32(((std::uint32_t*)&Header)[1]),
+			3
+		);
+		CurHashInput = CurVec;
+		MurmurHash3_x64_128(&CurHashInput, 0x10, Decima::MurmurSeed, &CurHash);
+		CurVec = _mm_xor_si128(
+			_mm_loadu_si128((__m128i*)&(((std::uint32_t*)&Header)[2])),
+			CurHash
+		);
+		_mm_storeu_si128((__m128i*)&(((std::uint32_t*)&Header)[2]), CurVec);
 
 
-	CurVec = _mm_blend_epi16(
-		MurmurSalt,
-		_mm_set1_epi32(Header.Version + 1),
-		3
-	);
-	CurHashInput = CurVec;
-	MurmurHash3_x64_128(&CurHashInput, 0x10, Decima::MurmurSeed, &CurHash);
-	CurVec = _mm_xor_si128(
-		_mm_loadu_si128((__m128i*)&(((std::uint32_t*)&Header)[2 + 4])),
-		CurHash
-	);
-	_mm_storeu_si128((__m128i*)&(((std::uint32_t*)&Header)[2 + 4]), CurVec);
+		CurVec = _mm_blend_epi16(
+			MurmurSalt,
+			_mm_set1_epi32(Header.Version + 1),
+			3
+		);
+		CurHashInput = CurVec;
+		MurmurHash3_x64_128(&CurHashInput, 0x10, Decima::MurmurSeed, &CurHash);
+		CurVec = _mm_xor_si128(
+			_mm_loadu_si128((__m128i*)&(((std::uint32_t*)&Header)[2 + 4])),
+			CurHash
+		);
+		_mm_storeu_si128((__m128i*)&(((std::uint32_t*)&Header)[2 + 4]), CurVec);
+	}
 
 	std::printf(
 		"Magic:               %12.08X\n"
@@ -85,13 +88,44 @@ int main(int argc, char* argv[])
 
 	for(Decima::FileEntry& CurEntry : FileEntries)
 	{
+		{
+			__m128i CurHashInput;
+			__m128i CurHash;
+			__m128i CurVec = _mm_blend_epi16(
+				MurmurSalt,
+				_mm_set1_epi32(((std::uint32_t*)&CurEntry)[1]),
+				3
+			);
+			CurHashInput = CurVec;
+			MurmurHash3_x64_128(&CurHashInput, 0x10, Decima::MurmurSeed, &CurHash);
+
+			CurVec = _mm_xor_si128(
+				_mm_loadu_si128((__m128i*)&(((std::uint32_t*)&CurEntry)[2])),
+				CurHash
+			);
+			_mm_storeu_si128((__m128i*)&CurEntry, CurVec);
+
+
+			CurVec = _mm_blend_epi16(
+				MurmurSalt,
+				_mm_set1_epi32(CurEntry.Unknown1C),
+				3
+			);
+			CurHashInput = CurVec;
+			MurmurHash3_x64_128(&CurHashInput, 0x10, Decima::MurmurSeed, &CurHash);
+			CurVec = _mm_xor_si128(
+				_mm_loadu_si128((__m128i*)&(((std::uint32_t*)&CurEntry)[4])),
+				CurHash
+			);
+			_mm_storeu_si128((__m128i*)&(((std::uint32_t*)&CurEntry)[4]), CurVec);
+		}
 		std::printf(
-			"EntryID     %12u\n"
-			"Unknown04   %12u\n"
-			"Unknown08   %12lu\n"
-			"Offset      %12lu\n"
-			"Size        %12u\n"
-			"Unknown1C   %12u\n",
+			"\tEntryID:       %24.u\n"
+			"\t- Unknown04:   %24.u\n"
+			"\t- Unknown08:   %24.016lX\n"
+			"\t- Offset:      %24lu\n"
+			"\t- Size:        %24u\n"
+			"\t- Unknown1C:   %24.08X\n",
 			CurEntry.EntryID,
 			CurEntry.Unknown04,
 			CurEntry.Unknown08,
