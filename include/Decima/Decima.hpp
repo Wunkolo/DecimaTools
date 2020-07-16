@@ -27,6 +27,8 @@ namespace Decima
 		std::uint64_t FileTableCount;
 		std::uint32_t ChunkTableCount;
 		std::uint32_t MaxChunkSize;
+
+		void Decrypt();
 	};
 	static_assert(sizeof(FileHeader) == 0x28);
 
@@ -37,8 +39,9 @@ namespace Decima
 		std::uint64_t Unknown08;
 		std::uint64_t Offset;
 		std::uint32_t Size;
-		// Seems to be used during decryption
+		// Used during Decryption, likely a checksum
 		std::uint32_t Unknown1C;
+		void Decrypt();
 	};
 	static_assert(sizeof(FileEntry) == 0x20);
 
@@ -46,12 +49,13 @@ namespace Decima
 	{
 		std::uint64_t OffsetUncompressed;
 		std::uint32_t SizeUncompresed;
-		// Used during Decryption
+		// Used during Decryption, likely a checksum
 		std::uint32_t Unknown0C;
 		std::uint64_t OffsetCompressed;
 		std::uint32_t SizeCompressed;
-		// Used during Decryption
+		// Used during Decryption, likely a checksum
 		std::uint32_t Unknown1C;
+		void Decrypt();
 	};
 	static_assert(sizeof(ChunkEntry) == 0x20);
 	#pragma pack(pop)
