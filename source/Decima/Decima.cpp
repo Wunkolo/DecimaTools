@@ -113,7 +113,7 @@ namespace Decima
 {
 	void FileHeader::Decrypt()
 	{
-		std::array<std::uint32_t,4> CurVec = MurmurSalt;
+		std::array<std::uint32_t,4> CurVec = MurmurSalt1;
 		CurVec[0] = this->Version;
 		std::array<std::uint32_t,4> CurHash;
 		MurmurHash3_x64_128(CurVec.data(), 0x10, Decima::MurmurSeed, CurHash.data());
@@ -125,7 +125,7 @@ namespace Decima
 			std::bit_xor<std::uint32_t>()
 		);
 
-		CurVec = MurmurSalt;
+		CurVec = MurmurSalt1;
 		CurVec[0] = this->Version + 1;
 		MurmurHash3_x64_128(CurVec.data(), 0x10, Decima::MurmurSeed, CurHash.data());
 
@@ -138,7 +138,7 @@ namespace Decima
 	}
 	void FileEntry::Decrypt()
 	{
-		std::array<std::uint32_t,4> CurVec = MurmurSalt;
+		std::array<std::uint32_t,4> CurVec = MurmurSalt1;
 		CurVec[0] = this->Unknown04;
 		std::array<std::uint32_t,4> CurHash;
 		MurmurHash3_x64_128(CurVec.data(), 0x10, Decima::MurmurSeed, CurHash.data());
@@ -150,7 +150,7 @@ namespace Decima
 			std::bit_xor<std::uint32_t>()
 		);
 		
-		CurVec = MurmurSalt;
+		CurVec = MurmurSalt1;
 		CurVec[0] = this->Unknown1C;
 		MurmurHash3_x64_128(CurVec.data(), 0x10, Decima::MurmurSeed, CurHash.data());
 
@@ -163,11 +163,11 @@ namespace Decima
 	}
 	void ChunkEntry::Decrypt()
 	{
-		const __m128i MurmurSaltV = _mm_loadu_si128((const __m128i*)MurmurSalt.data());
+		const __m128i MurmurSalt1V = _mm_loadu_si128((const __m128i*)MurmurSalt1.data());
 		__m128i CurHashInput;
 		__m128i CurHash;
 		__m128i CurVec = _mm_blend_epi16(
-			MurmurSaltV,
+			MurmurSalt1V,
 			_mm_set1_epi32(this->Unknown0C),
 			3
 		);
@@ -182,7 +182,7 @@ namespace Decima
 
 
 		CurVec = _mm_blend_epi16(
-			MurmurSaltV,
+			MurmurSalt1V,
 			_mm_set1_epi32(this->Unknown1C),
 			3
 		);

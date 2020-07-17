@@ -4,11 +4,12 @@
 
 namespace Decima
 {
-	constexpr std::array<std::uint32_t, 4> MurmurSalt = {
-		0x0FA3A9443,
-		0x0F41CAB62,
-		0x0F376811C,
-		0x0D2A89E3E
+	constexpr std::array<std::uint32_t, 4> MurmurSalt1 = {
+		0x0FA3A9443, 0x0F41CAB62, 0x0F376811C, 0x0D2A89E3E
+	};
+
+	constexpr std::array<std::uint32_t, 4> MurmurSalt2 = {
+		0x06C084A37, 0x07E159D95, 0x03D5AF7E8, 0x018AA7D3F
 	};
 
 	constexpr std::uint32_t MurmurSeed = 42u;
