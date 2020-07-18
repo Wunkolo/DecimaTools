@@ -4,17 +4,19 @@
 
 namespace Decima
 {
+	// Used for file headers, file table entries, chunk table entires
 	constexpr std::array<std::uint32_t, 4> MurmurSalt1 = {
 		0x0FA3A9443, 0x0F41CAB62, 0x0F376811C, 0x0D2A89E3E
 	};
 
+	// Used for file data chunks
 	constexpr std::array<std::uint32_t, 4> MurmurSalt2 = {
 		0x06C084A37, 0x07E159D95, 0x03D5AF7E8, 0x018AA7D3F
 	};
 
 	constexpr std::uint32_t MurmurSeed = 42u;
-	#pragma pack(push,1)
 
+	#pragma pack(push,1)
 	// Thanks Jayveer for actually being open about these structs
 	// https://github.com/Jayveer/Decima-Explorer/blob/master/archive/DecimaArchive.h
 	struct FileHeader
