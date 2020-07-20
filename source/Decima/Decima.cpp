@@ -1,4 +1,5 @@
 #include <Decima/Decima.hpp>
+
 #include <algorithm>
 #include <functional>
 #include <iterator>
@@ -111,12 +112,14 @@ static void MurmurHash3_x64_128 ( const void * key, const int len,
 
 namespace Decima
 {
-	void FileHeader::Decrypt()
+	void Archive::FileHeader::Decrypt()
 	{
 		std::array<std::uint32_t,4> CurVec = MurmurSalt1;
-		CurVec[0] = this->Version;
+		CurVec[0] = this->Key;
 		std::array<std::uint32_t,4> CurHash;
-		MurmurHash3_x64_128(CurVec.data(), 0x10, Decima::MurmurSeed, CurHash.data());
+		MurmurHash3_x64_128(
+			CurVec.data(), 0x10, Decima::Archive::MurmurSeed, CurHash.data()
+		);
 
 		std::transform(
 			CurVec.cbegin(), CurVec.cend(),
@@ -126,8 +129,10 @@ namespace Decima
 		);
 
 		CurVec = MurmurSalt1;
-		CurVec[0] = this->Version + 1;
-		MurmurHash3_x64_128(CurVec.data(), 0x10, Decima::MurmurSeed, CurHash.data());
+		CurVec[0] = this->Key + 1;
+		MurmurHash3_x64_128(
+			CurVec.data(), 0x10, Decima::Archive::MurmurSeed, CurHash.data()
+		);
 
 		std::transform(
 			CurHash.cbegin(), CurHash.cend(),
@@ -136,12 +141,14 @@ namespace Decima
 			std::bit_xor<std::uint32_t>()
 		);
 	}
-	void FileEntry::Decrypt()
+	void Archive::FileEntry::Decrypt()
 	{
 		std::array<std::uint32_t,4> CurVec = MurmurSalt1;
 		CurVec[0] = this->Unknown04;
 		std::array<std::uint32_t,4> CurHash;
-		MurmurHash3_x64_128(CurVec.data(), 0x10, Decima::MurmurSeed, CurHash.data());
+		MurmurHash3_x64_128(
+			CurVec.data(), 0x10, Decima::Archive::MurmurSeed, CurHash.data()
+		);
 
 		std::transform(
 			CurHash.cbegin(), CurHash.cend(),
@@ -152,7 +159,9 @@ namespace Decima
 		
 		CurVec = MurmurSalt1;
 		CurVec[0] = this->Unknown1C;
-		MurmurHash3_x64_128(CurVec.data(), 0x10, Decima::MurmurSeed, CurHash.data());
+		MurmurHash3_x64_128(
+			CurVec.data(), 0x10, Decima::Archive::MurmurSeed, CurHash.data()
+		);
 
 		std::transform(
 			CurHash.cbegin(), CurHash.cend(),
@@ -161,12 +170,14 @@ namespace Decima
 			std::bit_xor<std::uint32_t>()
 		);
 	}
-	void ChunkEntry::Decrypt()
+	void Archive::ChunkEntry::Decrypt()
 	{
 		std::array<std::uint32_t,4> CurVec = MurmurSalt1;
 		CurVec[0] = this->Unknown0C;
 		std::array<std::uint32_t,4> CurHash;
-		MurmurHash3_x64_128(CurVec.data(), 0x10, Decima::MurmurSeed, CurHash.data());
+		MurmurHash3_x64_128(
+			CurVec.data(), 0x10, Decima::Archive::MurmurSeed, CurHash.data()
+		);
 
 		std::transform(
 			CurHash.cbegin(), CurHash.cend(),
@@ -177,7 +188,9 @@ namespace Decima
 		
 		CurVec = MurmurSalt1;
 		CurVec[0] = this->Unknown1C;
-		MurmurHash3_x64_128(CurVec.data(), 0x10, Decima::MurmurSeed, CurHash.data());
+		MurmurHash3_x64_128(
+			CurVec.data(), 0x10, Decima::Archive::MurmurSeed, CurHash.data()
+		);
 
 		std::transform(
 			CurHash.cbegin(), CurHash.cend(),
@@ -185,5 +198,76 @@ namespace Decima
 			(std::uint32_t*)this + 4,
 			std::bit_xor<std::uint32_t>()
 		);
+	}
+
+	Archive::Archive()
+	{
+
+	}
+
+	Archive::~Archive()
+	{
+
+	}
+
+	std::unique_ptr<Archive> Archive::OpenArchive(
+		const std::filesystem::path& Path
+	)
+	{
+		if( !std::filesystem::exists(Path) )			return nullptr;
+		if( !std::filesystem::is_regular_file(Path) )	return nullptr;
+
+		std::unique_ptr<Archive> NewArchive(new Archive());
+
+		std::ptrdiff_t ReadPoint = 0;
+
+		NewArchive->FileMapping = mio::ummap_source(Path.c_str());
+		NewArchive->Header = *reinterpret_cast<const Archive::FileHeader*>(
+			NewArchive->FileMapping.data()
+		);
+		ReadPoint += sizeof(Archive::FileHeader);
+
+		switch( NewArchive->Header.Version )
+		{
+			case ArchiveVersion::Unencrypted:
+			{
+				break;
+			}
+			case ArchiveVersion::Encrypted:
+			{
+				NewArchive->Header.Decrypt();
+				break;
+			}
+			// Not a valid archive file
+			default: return nullptr;
+		}
+
+		// Load file entries
+		NewArchive->FileEntries.resize(NewArchive->Header.FileTableCount);
+		std::memcpy(
+			NewArchive->FileEntries.data(),
+			NewArchive->FileMapping.data() + ReadPoint,
+			sizeof(Decima::Archive::FileEntry) * NewArchive->Header.FileTableCount
+		);
+		ReadPoint += sizeof(Decima::Archive::FileEntry) * NewArchive->Header.FileTableCount;
+		if(	NewArchive->Encrypted() )
+		{
+			for(auto& CurEntry : NewArchive->FileEntries) CurEntry.Decrypt();
+		}
+
+		// Load chunk entries
+		NewArchive->ChunkEntries.resize(NewArchive->Header.ChunkTableCount);
+		ReadPoint += sizeof(Decima::Archive::ChunkEntry) * NewArchive->Header.ChunkTableCount;
+		std::memcpy(
+			NewArchive->ChunkEntries.data(),
+			NewArchive->FileMapping.data() + ReadPoint,
+			sizeof(Decima::Archive::ChunkEntry) * NewArchive->Header.ChunkTableCount
+		);
+		if(	NewArchive->Encrypted() )
+		{
+			for(auto& CurChunk : NewArchive->ChunkEntries) CurChunk.Decrypt();
+		}
+
+		return NewArchive;
 	}
 }

@@ -1,13 +1,16 @@
 cmake_minimum_required( VERSION 3.8.0 )
 project( DecimaTools )
 
-set( CMAKE_CXX_STANDARD 11 )
+set( CMAKE_CXX_STANDARD 17 )
 set( CMAKE_CXX_STANDARD_REQUIRED ON )
 set( CMAKE_CXX_EXTENSIONS OFF )
 
 set( CMAKE_COLOR_MAKEFILE ON )
 set( CMAKE_VERBOSE_MAKEFILE ON )
 set( CMAKE_EXPORT_COMPILE_COMMANDS ON )
+
+### External dependencies
+add_subdirectory(extern/mio)
 
 ### libDecima
 add_library(
@@ -18,6 +21,11 @@ target_include_directories(
 	Decima
 	PUBLIC
 	include
+)
+target_link_libraries(
+	Decima
+	PRIVATE
+	mio
 )
 
 
@@ -30,7 +38,6 @@ elseif( CMAKE_COMPILER_IS_GNUCXX )
 endif()
 
 
-add_subdirectory(extern/mio)
 
 add_executable(
 	Archive
