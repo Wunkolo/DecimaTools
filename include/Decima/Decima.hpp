@@ -4,6 +4,8 @@
 
 #include <vector>
 #include <memory>
+#include <optional>
+#include <unordered_map>
 #include <filesystem>
 
 #include <mio/mmap.hpp>
@@ -60,7 +62,7 @@ public:
 
 	struct FileEntry
 	{
-		std::uint32_t	EntryID;
+		std::uint32_t	FileID;
 		std::uint32_t	Unknown04;
 		std::uint64_t	Unknown08;
 		FileSpan		Span;
@@ -92,15 +94,19 @@ public:
 		std::function<void(const FileEntry&)> Proc
 	) const 
 	{
-		for(const auto& Entry : FileEntries) Proc(Entry);
+		std::for_each(FileEntries.cbegin(), FileEntries.cend(), Proc);
 	}
 
 	inline void IterateChunkEntries(
 		std::function<void(const ChunkEntry&)> Proc
 	) const 
 	{
-		for(const auto& Entry : ChunkEntries) Proc(Entry);
+		std::for_each(ChunkEntries.cbegin(), ChunkEntries.cend(), Proc);
 	}
+
+	std::optional<std::reference_wrapper<const Archive::FileEntry>> GetFileEntry(
+		std::uint32_t FileID
+	) const;
 
 	static std::unique_ptr<Archive> OpenArchive(
 		const std::filesystem::path& Path
@@ -108,6 +114,8 @@ public:
 private:
 	Archive();
 	FileHeader Header;
+	//  Used to easily lookup an EntryID into an index into FileEntries
+	std::unordered_map<std::uint32_t, std::size_t> FileEntryLut;
 	std::vector<Decima::Archive::FileEntry> FileEntries;
 	std::vector<Decima::Archive::ChunkEntry> ChunkEntries;
 	mio::ummap_source FileMapping;

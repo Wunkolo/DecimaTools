@@ -3,12 +3,9 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
-
 #include <vector>
 
 #include <Decima/Decima.hpp>
-
-#include <immintrin.h>
 
 int main(int argc, char* argv[])
 {
@@ -44,13 +41,13 @@ int main(int argc, char* argv[])
 		{
 			std::printf(
 				"\t---------------------------------------\n"
-				"\tEntryID:       %24.u\n"
+				"\tFileID:        %24.u\n"
 				"\tUnknown04:     %24.u\n"
 				"\tUnknown08:     %24.016lX\n"
 				"\tSpan.Offset:   %24lu\n"
 				"\tSpan.Size:     %24u\n"
 				"\tSpan.Hash:     %24.08X\n",
-				CurEntry.EntryID,
+				CurEntry.FileID,
 				CurEntry.Unknown04,
 				CurEntry.Unknown08,
 				CurEntry.Span.Offset,
