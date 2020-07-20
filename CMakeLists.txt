@@ -10,7 +10,7 @@ set( CMAKE_VERBOSE_MAKEFILE ON )
 set( CMAKE_EXPORT_COMPILE_COMMANDS ON )
 
 ### External dependencies
-add_subdirectory(extern/mio)
+add_subdirectory(extern)
 
 ### libDecima
 add_library(
