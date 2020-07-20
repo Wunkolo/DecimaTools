@@ -158,7 +158,7 @@ namespace Decima
 		);
 		
 		CurVec = MurmurSalt1;
-		CurVec[0] = this->Unknown1C;
+		CurVec[0] = this->Span.Hash;
 		MurmurHash3_x64_128(
 			CurVec.data(), 0x10, Decima::Archive::MurmurSeed, CurHash.data()
 		);
@@ -173,7 +173,7 @@ namespace Decima
 	void Archive::ChunkEntry::Decrypt()
 	{
 		std::array<std::uint32_t,4> CurVec = MurmurSalt1;
-		CurVec[0] = this->Unknown0C;
+		CurVec[0] = this->UncompressedSpan.Hash;
 		std::array<std::uint32_t,4> CurHash;
 		MurmurHash3_x64_128(
 			CurVec.data(), 0x10, Decima::Archive::MurmurSeed, CurHash.data()
@@ -187,7 +187,7 @@ namespace Decima
 		);
 		
 		CurVec = MurmurSalt1;
-		CurVec[0] = this->Unknown1C;
+		CurVec[0] = this->CompressedSpan.Hash;
 		MurmurHash3_x64_128(
 			CurVec.data(), 0x10, Decima::Archive::MurmurSeed, CurHash.data()
 		);
@@ -249,15 +249,14 @@ namespace Decima
 			NewArchive->FileMapping.data() + ReadPoint,
 			sizeof(Decima::Archive::FileEntry) * NewArchive->Header.FileTableCount
 		);
-		ReadPoint += sizeof(Decima::Archive::FileEntry) * NewArchive->Header.FileTableCount;
 		if(	NewArchive->Encrypted() )
 		{
 			for(auto& CurEntry : NewArchive->FileEntries) CurEntry.Decrypt();
 		}
+		ReadPoint += sizeof(Decima::Archive::FileEntry) * NewArchive->Header.FileTableCount;
 
 		// Load chunk entries
 		NewArchive->ChunkEntries.resize(NewArchive->Header.ChunkTableCount);
-		ReadPoint += sizeof(Decima::Archive::ChunkEntry) * NewArchive->Header.ChunkTableCount;
 		std::memcpy(
 			NewArchive->ChunkEntries.data(),
 			NewArchive->FileMapping.data() + ReadPoint,
@@ -267,6 +266,7 @@ namespace Decima
 		{
 			for(auto& CurChunk : NewArchive->ChunkEntries) CurChunk.Decrypt();
 		}
+		ReadPoint += sizeof(Decima::Archive::ChunkEntry) * NewArchive->Header.ChunkTableCount;
 
 		return NewArchive;
 	}

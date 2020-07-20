@@ -35,6 +35,13 @@ public:
 	};
 
 	#pragma pack(push,1)
+	struct FileSpan
+	{
+		std::uint64_t Offset;
+		std::uint32_t Size;
+		// Used during Decryption, likely a checksum
+		std::uint32_t Hash;
+	};
 	// Thanks Jayveer for actually being open about these structs
 	// https://github.com/Jayveer/Decima-Explorer/blob/master/archive/DecimaArchive.h
 	struct FileHeader
@@ -53,27 +60,18 @@ public:
 
 	struct FileEntry
 	{
-		std::uint32_t EntryID;
-		std::uint32_t Unknown04;
-		std::uint64_t Unknown08;
-		std::uint64_t Offset;
-		std::uint32_t Size;
-		// Used during Decryption, likely a checksum
-		std::uint32_t Unknown1C;
+		std::uint32_t	EntryID;
+		std::uint32_t	Unknown04;
+		std::uint64_t	Unknown08;
+		FileSpan		Span;
 		void Decrypt();
 	};
 	static_assert(sizeof(FileEntry) == 0x20);
 
 	struct ChunkEntry
 	{
-		std::uint64_t OffsetUncompressed;
-		std::uint32_t SizeUncompresed;
-		// Used during Decryption, likely a checksum
-		std::uint32_t Unknown0C;
-		std::uint64_t OffsetCompressed;
-		std::uint32_t SizeCompressed;
-		// Used during Decryption, likely a checksum
-		std::uint32_t Unknown1C;
+		FileSpan	UncompressedSpan;
+		FileSpan	CompressedSpan;
 		void Decrypt();
 	};
 	static_assert(sizeof(ChunkEntry) == 0x20);

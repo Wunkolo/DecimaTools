@@ -24,7 +24,7 @@ target_include_directories(
 )
 target_link_libraries(
 	Decima
-	PRIVATE
+	PUBLIC
 	mio
 )
 
@@ -37,8 +37,6 @@ elseif( CMAKE_COMPILER_IS_GNUCXX )
 	target_compile_options( Decima PUBLIC -march=skylake )
 endif()
 
-
-
 add_executable(
 	Archive
 	tools/Archive.cpp
@@ -48,5 +46,4 @@ target_link_libraries(
 	Archive
 	PRIVATE
 	Decima
-	mio
 )
