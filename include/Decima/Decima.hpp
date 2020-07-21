@@ -6,7 +6,9 @@
 #include <memory>
 #include <optional>
 #include <unordered_map>
+#include <map>
 #include <filesystem>
+#include <ostream>
 
 #include <mio/mmap.hpp>
 
@@ -16,12 +18,12 @@ class Archive
 {
 public:
 	~Archive();
-	// Used for file headers, file table entries, chunk table entires
+	// Used for file headers, file table entries, Segment table entires
 	static constexpr std::array<std::uint32_t, 4> MurmurSalt1 = {
 		0x0FA3A9443, 0x0F41CAB62, 0x0F376811C, 0x0D2A89E3E
 	};
 
-	// Used for file data chunks
+	// Used for file data Segments
 	static constexpr std::array<std::uint32_t, 4> MurmurSalt2 = {
 		0x06C084A37, 0x07E159D95, 0x03D5AF7E8, 0x018AA7D3F
 	};
@@ -53,8 +55,8 @@ public:
 		std::uint64_t	FileSize;
 		std::uint64_t	DataSize;
 		std::uint64_t	FileTableCount;
-		std::uint32_t	ChunkTableCount;
-		std::uint32_t	MaxChunkSize;
+		std::uint32_t	SegmentTableCount;
+		std::uint32_t	MaxSegmentSize;
 
 		void Decrypt();
 	};
@@ -70,13 +72,13 @@ public:
 	};
 	static_assert(sizeof(FileEntry) == 0x20);
 
-	struct ChunkEntry
+	struct SegmentEntry
 	{
 		FileSpan	UncompressedSpan;
 		FileSpan	CompressedSpan;
 		void Decrypt();
 	};
-	static_assert(sizeof(ChunkEntry) == 0x20);
+	static_assert(sizeof(SegmentEntry) == 0x20);
 	#pragma pack(pop)
 
 
@@ -97,16 +99,26 @@ public:
 		std::for_each(FileEntries.cbegin(), FileEntries.cend(), Proc);
 	}
 
-	inline void IterateChunkEntries(
-		std::function<void(const ChunkEntry&)> Proc
+	inline void IterateSegmentEntries(
+		std::function<void(const SegmentEntry&)> Proc
 	) const 
 	{
-		std::for_each(ChunkEntries.cbegin(), ChunkEntries.cend(), Proc);
+		std::for_each(SegmentEntries.cbegin(), SegmentEntries.cend(), Proc);
 	}
 
 	std::optional<std::reference_wrapper<const Archive::FileEntry>> GetFileEntry(
 		std::uint32_t FileID
 	) const;
+
+	// Given an offset, find out what segment we land in
+	std::optional<std::reference_wrapper<const Archive::SegmentEntry>> GetSegmentCompressed(
+		std::uint64_t Offset
+	) const;
+	std::optional<std::reference_wrapper<const Archive::SegmentEntry>> GetSegmentUncompressed(
+		std::uint64_t Offset
+	) const;
+
+	bool ExtractFile(const FileEntry& FileEntry, std::ostream& OutStream) const;
 
 	static std::unique_ptr<Archive> OpenArchive(
 		const std::filesystem::path& Path
@@ -116,8 +128,13 @@ private:
 	FileHeader Header;
 	//  Used to easily lookup an EntryID into an index into FileEntries
 	std::unordered_map<std::uint32_t, std::size_t> FileEntryLut;
-	std::vector<Decima::Archive::FileEntry> FileEntries;
-	std::vector<Decima::Archive::ChunkEntry> ChunkEntries;
+	std::vector<FileEntry> FileEntries;
+
+	// Acceleration structure to map an offset into a Segment entry
+	std::map<std::uint64_t,const SegmentEntry&> SegmentCompressedLut;
+	std::map<std::uint64_t,const SegmentEntry&> SegmentUncompressedLut;
+	std::vector<SegmentEntry> SegmentEntries;
+
 	mio::ummap_source FileMapping;
 };
 }

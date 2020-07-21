@@ -4,6 +4,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <vector>
+#include <fstream>
 
 #include <Decima/Decima.hpp>
 
@@ -14,9 +15,14 @@ int main(int argc, char* argv[])
 		return EXIT_FAILURE;
 	}
 
-
-	auto Archive = Decima::Archive::OpenArchive(argv[1]);
+	const std::filesystem::path ArchivePath(argv[1]);
+	const std::filesystem::path OutputPath(ArchivePath.parent_path() / ArchivePath.stem());
+	auto Archive = Decima::Archive::OpenArchive(ArchivePath);
 	if( !Archive ) return EXIT_FAILURE;
+
+	std::filesystem::create_directory(
+		OutputPath
+	);
 
 	Decima::Archive::FileHeader Header = Archive->GetHeader();
 	std::printf(
@@ -25,8 +31,8 @@ int main(int argc, char* argv[])
 		"FileSize:            %12lu\n"
 		"DataSize:            %12lu\n"
 		"FileTableCount:      %12lu\n"
-		"SegmentTableCount:     %12u\n"
-		"MaxSegmentSize:        %12u\n",
+		"SegmentTableCount:   %12u\n"
+		"MaxSegmentSize:      %12u\n",
 		std::uint32_t(Header.Version),
 		Header.Key,
 		Header.FileSize,
@@ -37,11 +43,11 @@ int main(int argc, char* argv[])
 	);
 
 	Archive->IterateFileEntries(
-		[](const Decima::Archive::FileEntry& CurEntry)
+		[&Archive, &OutputPath](const Decima::Archive::FileEntry& CurEntry)
 		{
 			std::printf(
 				"\t---------------------------------------\n"
-				"\tFileID:        %24.u\n"
+				"\tFileID:        %24.08X\n"
 				"\tUnknown04:     %24.u\n"
 				"\tUnknown08:     %24.016lX\n"
 				"\tSpan.Offset:   %24lu\n"
@@ -54,27 +60,12 @@ int main(int argc, char* argv[])
 				CurEntry.Span.Size,
 				CurEntry.Span.Hash
 			);
-		}
-	);
-
-	Archive->IterateSegmentEntries(
-		[](const Decima::Archive::SegmentEntry& CurSegment)
-		{
-			std::printf(
-				"\t---------------------------------------------\n"
-				"\tUncompressed.Offset:  %24.lu\n"
-				"\tUncompressed.Size:    %24.u\n"
-				"\tUncompressed.Hash:    %24.08X\n"
-				"\tCompressed.Offset:    %24.lu\n"
-				"\tCompressed.Size:      %24.u\n"
-				"\tCompressed.Hash:      %24.08X\n",
-				CurSegment.UncompressedSpan.Offset,
-				CurSegment.UncompressedSpan.Size,
-				CurSegment.UncompressedSpan.Hash,
-				CurSegment.CompressedSpan.Offset,
-				CurSegment.CompressedSpan.Size,
-				CurSegment.CompressedSpan.Hash
-			);
+			char FileName[32];
+			std::snprintf(FileName, 32, "%08X.bin", CurEntry.FileID);
+			if( std::ofstream OutputFile(OutputPath / FileName); OutputFile )
+			{
+				Archive->ExtractFile(CurEntry, OutputFile);
+			}
 		}
 	);
 

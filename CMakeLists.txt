@@ -37,13 +37,25 @@ elseif( CMAKE_COMPILER_IS_GNUCXX )
 	target_compile_options( Decima PUBLIC -march=skylake )
 endif()
 
+
+## Archive
 add_executable(
 	Archive
 	tools/Archive.cpp
 )
-
 target_link_libraries(
 	Archive
+	PRIVATE
+	Decima
+)
+
+## Dump
+add_executable(
+	Dump
+	tools/Dump.cpp
+)
+target_link_libraries(
+	Dump
 	PRIVATE
 	Decima
 )

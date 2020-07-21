@@ -178,15 +178,15 @@ void md5(const uint8_t *initial_msg, size_t initial_len, uint8_t *digest)
 	// initial_len>>29 == initial_len*8>>32, but avoids overflow.
 	*((std::uint32_t*)(msg + new_len + 4)) = initial_len>>29;
 
-	// Process the message in successive 512-bit chunks:
-	//for each 512-bit chunk of message:
+	// Process the message in successive 512-bit Segments:
+	//for each 512-bit Segment of message:
 	for(offset=0; offset<new_len; offset += (512/8)) {
 
-		// break chunk into sixteen 32-bit words w[j], 0 ≤ j ≤ 15
+		// break Segment into sixteen 32-bit words w[j], 0 ≤ j ≤ 15
 		for (i = 0; i < 16; i++)
 			w[i] = ((std::uint32_t*)(msg + offset))[i];
 
-		// Initialize hash value for this chunk:
+		// Initialize hash value for this Segment:
 		a = h0;
 		b = h1;
 		c = h2;
@@ -217,7 +217,7 @@ void md5(const uint8_t *initial_msg, size_t initial_len, uint8_t *digest)
 
 		}
 
-		// Add this chunk's hash to result so far:
+		// Add this Segment's hash to result so far:
 		h0 += a;
 		h1 += b;
 		h2 += c;
@@ -293,7 +293,7 @@ namespace Decima
 			std::bit_xor<std::uint32_t>()
 		);
 	}
-	void Archive::ChunkEntry::Decrypt()
+	void Archive::SegmentEntry::Decrypt()
 	{
 		std::array<std::uint32_t,4> CurVec = MurmurSalt1;
 		CurVec[0] = this->UncompressedSpan.Hash;
@@ -342,6 +342,100 @@ namespace Decima
 		return std::nullopt;
 	}
 
+	std::optional<std::reference_wrapper<const Archive::SegmentEntry>> Archive::GetSegmentCompressed(
+		std::uint64_t Offset
+	) const
+	{
+		if( const auto LowerBound = SegmentCompressedLut.lower_bound(Offset); LowerBound != SegmentCompressedLut.cend())
+		{
+			const SegmentEntry& Segment = LowerBound->second;
+			// Must be within the chunk's span
+			if( Offset - Segment.CompressedSpan.Offset < Segment.CompressedSpan.Size)
+			{
+				return Segment;
+			}
+		}
+		return std::nullopt;
+	}
+
+	std::optional<std::reference_wrapper<const Archive::SegmentEntry>> Archive::GetSegmentUncompressed(
+		std::uint64_t Offset
+	) const
+	{
+		if( const auto LowerBound = SegmentUncompressedLut.lower_bound(Offset); LowerBound != SegmentUncompressedLut.cend())
+		{
+			const SegmentEntry& Segment = LowerBound->second;
+			// Must be within the chunk's span
+			if( Offset - Segment.UncompressedSpan.Offset < Segment.UncompressedSpan.Size)
+			{
+				return Segment;
+			}
+		}
+		return std::nullopt;
+	}
+
+	bool Archive::ExtractFile(const FileEntry& FileEntry, std::ostream& OutStream) const
+	{
+		if(!OutStream) return false;
+
+		// Read buffer
+		std::vector<std::byte> SegmentData;
+		SegmentData.resize(Header.MaxSegmentSize);
+
+		std::size_t ToRead = FileEntry.Span.Size;
+
+		SegmentEntry CurSegment;
+		while( ToRead )
+		{
+			if( auto FindSegment = GetSegmentUncompressed(FileEntry.Span.Offset + (FileEntry.Span.Size - ToRead)); FindSegment)
+			{
+				CurSegment = FindSegment.value();
+			}
+			else
+			{
+				// Error mapping offset
+				return false;
+			}
+			// Read Compressed Segment data
+			std::memcpy(
+				SegmentData.data(),
+				FileMapping.data() + CurSegment.CompressedSpan.Offset,
+				CurSegment.CompressedSpan.Size
+			);
+			// Decrypt Segment
+			if( Encrypted() )
+			{
+				std::array<std::uint32_t, 4> Key;
+				// Hash first 16 bytes of Segment entry
+				MurmurHash3_x64_128(&CurSegment, 0x10, MurmurSeed, Key.data());
+				// Xor it
+				std::transform(
+					MurmurSalt2.cbegin(), MurmurSalt2.cend(),
+					Key.cbegin(), Key.begin(),
+					std::bit_xor<std::uint32_t>()
+				);
+				// MD5 hash it
+				md5((const std::uint8_t*)Key.data(), 0x10, (std::uint8_t*)Key.data());
+
+				// Xor the chunk data with this hash, modulo 16
+				for( std::size_t i = 0; i < CurSegment.CompressedSpan.Size; ++i)
+				{
+					SegmentData[i] ^= reinterpret_cast<const std::byte*>(Key.data())[i % 16];
+				}
+			}
+			
+			// Decompress Segment
+
+			// Write decompressed data to file
+			OutStream.write(
+				reinterpret_cast<const char*>(SegmentData.data()),
+				CurSegment.UncompressedSpan.Size
+			);
+			ToRead -= CurSegment.UncompressedSpan.Size;
+		}
+		return true;
+	}
+
 	std::unique_ptr<Archive> Archive::OpenArchive(
 		const std::filesystem::path& Path
 	)
@@ -383,28 +477,34 @@ namespace Decima
 		);
 		if(	NewArchive->Encrypted() )
 		{
-			for(auto& CurEntry : NewArchive->FileEntries) CurEntry.Decrypt();
+			for( auto& CurEntry : NewArchive->FileEntries ) CurEntry.Decrypt();
 		}
 		ReadPoint += sizeof(Decima::Archive::FileEntry) * NewArchive->Header.FileTableCount;
 
 		// Generate file-entry LUT
 		for( std::size_t i = 0; i < NewArchive->FileEntries.size(); ++i)
 		{
-			NewArchive->FileEntryLut[NewArchive->FileEntries[i].FileID] = i;
+			NewArchive->FileEntryLut.emplace(NewArchive->FileEntries[i].FileID, i);
 		}
 
-		// Load chunk entries
-		NewArchive->ChunkEntries.resize(NewArchive->Header.ChunkTableCount);
+		// Load Segment entries
+		NewArchive->SegmentEntries.resize(NewArchive->Header.SegmentTableCount);
 		std::memcpy(
-			NewArchive->ChunkEntries.data(),
+			NewArchive->SegmentEntries.data(),
 			NewArchive->FileMapping.data() + ReadPoint,
-			sizeof(Decima::Archive::ChunkEntry) * NewArchive->Header.ChunkTableCount
+			sizeof(Decima::Archive::SegmentEntry) * NewArchive->Header.SegmentTableCount
 		);
 		if(	NewArchive->Encrypted() )
 		{
-			for(auto& CurChunk : NewArchive->ChunkEntries) CurChunk.Decrypt();
+			for( auto& CurSegment : NewArchive->SegmentEntries ) CurSegment.Decrypt();
 		}
-		ReadPoint += sizeof(Decima::Archive::ChunkEntry) * NewArchive->Header.ChunkTableCount;
+		// Build Segment LUTs
+		for(const auto& CurSegment : NewArchive->SegmentEntries)
+		{
+			NewArchive->SegmentCompressedLut.emplace(CurSegment.CompressedSpan.Offset, CurSegment);
+			NewArchive->SegmentUncompressedLut.emplace(CurSegment.UncompressedSpan.Offset, CurSegment);
+		}
+		ReadPoint += sizeof(Decima::Archive::SegmentEntry) * NewArchive->Header.SegmentTableCount;
 
 		return NewArchive;
 	}
