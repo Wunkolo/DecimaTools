@@ -362,8 +362,9 @@ namespace Decima
 		std::uint64_t Offset
 	) const
 	{
-		if( const auto LowerBound = SegmentUncompressedLut.lower_bound(Offset); LowerBound != SegmentUncompressedLut.cend())
+		if( auto LowerBound = SegmentUncompressedLut.upper_bound(Offset); LowerBound != SegmentUncompressedLut.cbegin())
 		{
+			--LowerBound;
 			const SegmentEntry& Segment = LowerBound->second;
 			// Must be within the chunk's span
 			if( Offset - Segment.UncompressedSpan.Offset < Segment.UncompressedSpan.Size)
@@ -382,11 +383,13 @@ namespace Decima
 		std::vector<std::byte> SegmentData;
 		SegmentData.resize(Header.MaxSegmentSize);
 
-		std::size_t ToRead = FileEntry.Span.Size;
+		std::uint32_t ToRead = FileEntry.Span.Size;
 
 		SegmentEntry CurSegment;
 		while( ToRead )
 		{
+			// File offset in uncompressed-space
+			const std::uint64_t FileOffset = FileEntry.Span.Offset + (FileEntry.Span.Size - ToRead);
 			if( auto FindSegment = GetSegmentUncompressed(FileEntry.Span.Offset + (FileEntry.Span.Size - ToRead)); FindSegment)
 			{
 				CurSegment = FindSegment.value();
@@ -408,7 +411,7 @@ namespace Decima
 				std::array<std::uint32_t, 4> Key;
 				// Hash first 16 bytes of Segment entry
 				MurmurHash3_x64_128(&CurSegment, 0x10, MurmurSeed, Key.data());
-				// Xor it
+				// Xor it with salt
 				std::transform(
 					MurmurSalt2.cbegin(), MurmurSalt2.cend(),
 					Key.cbegin(), Key.begin(),
@@ -425,13 +428,18 @@ namespace Decima
 			}
 			
 			// Decompress Segment
+			// TODO
 
+			// Offset within the segment in uncompressed-space
+			const std::uint32_t SegmentOffset = FileOffset - CurSegment.UncompressedSpan.Offset;
+			// Number of bytes within the current segment that we will be reading
+			const std::uint32_t SegmentSize = std::min(CurSegment.UncompressedSpan.Size, ToRead);
 			// Write decompressed data to file
 			OutStream.write(
-				reinterpret_cast<const char*>(SegmentData.data()),
-				CurSegment.UncompressedSpan.Size
+				reinterpret_cast<const char*>(SegmentData.data()) + SegmentOffset,
+				SegmentSize
 			);
-			ToRead -= CurSegment.UncompressedSpan.Size;
+			ToRead -= SegmentSize;
 		}
 		return true;
 	}
