@@ -433,7 +433,7 @@ namespace Decima
 			// Offset within the segment in uncompressed-space
 			const std::uint32_t SegmentOffset = FileOffset - CurSegment.UncompressedSpan.Offset;
 			// Number of bytes within the current segment that we will be reading
-			const std::uint32_t SegmentSize = std::min(CurSegment.UncompressedSpan.Size, ToRead);
+			const std::uint32_t SegmentSize = std::min(CurSegment.UncompressedSpan.Size - SegmentOffset, ToRead);
 			// Write decompressed data to file
 			OutStream.write(
 				reinterpret_cast<const char*>(SegmentData.data()) + SegmentOffset,
